@@ -174,7 +174,12 @@ onTrainEnd()
     [[ ${swopUid} -ne $(id -u) ]] && userGroupId=$(id -g ${swopUid})
 
     # If not passed, get the docker group id using getent group docker command
-    [[ -z "${dockerGroupId}" ]] && dockerGroupId=$(getent group docker | cut -d':' -f3)
+    if [[ -z "${dockerGroupId}" ]]; then
+        if command -v getent > /dev/null 2>&1; then
+            dockerGroupId=$(getent group docker | cut -d':' -f3)
+        fi
+        [[ -z "${dockerGroupId}" ]] && dockerGroupId=0
+    fi
 
 
     appendArrayVar "" dockerOpts                    \
