@@ -14,6 +14,7 @@
 ############################################################################
 
 import os
+import sys
 import numpy as np
 import csv
 import logging
@@ -46,6 +47,11 @@ def main():
   maxEpoch = int(os.getenv('MAX_EPOCHS', str(defaultMaxEpoch)))
   minPeers = int(os.getenv('MIN_PEERS', str(defaultMinPeers)))
   os.makedirs(scratchDir, exist_ok=True)
+
+  log_file = os.path.join(scratchDir, 'ml_worker.log')
+  sys.stdout = open(log_file, 'a')
+  sys.stderr = sys.stdout
+
   print('***** Starting model =', modelName)
   # ================== load test and train Data =========================
   print('-' * 64)
