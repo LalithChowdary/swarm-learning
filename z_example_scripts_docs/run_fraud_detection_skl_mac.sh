@@ -4,9 +4,9 @@ set -e
 echo "Exporting gnu-sed path..."
 export PATH="/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"
 
-export APLS_IP=192.168.64.6
-export HOST_IP=192.168.1.7
-export SN_IP=192.168.1.7
+export APLS_IP=192.168.29.153
+export HOST_IP=192.168.29.173
+export SN_IP=192.168.29.173
 export SN_API_PORT=30304
 
 echo "Cleaning up previous containers..."
