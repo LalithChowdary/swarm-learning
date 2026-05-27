@@ -69,6 +69,11 @@ def main():
 
     print('***** Starting model =', modelName)
 
+    log_file = os.path.join(scratchDir, "model_output.log")
+    import sys
+    sys.stdout = open(log_file, 'w', buffering=1)
+    sys.stderr = sys.stdout
+
     # ================== Load test and train Data =========================
     print('-' * 64)
 

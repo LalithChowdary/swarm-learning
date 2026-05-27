@@ -4,7 +4,7 @@
 Name: swarm_fd_task
 TaskType: RUN_SWARM
 Author: HPESwarm
-Prereq: user_env_tf_build_task
+Prereq: user_env_skl_build_task
 Outcome: swarm_fd_task
 Body:
     Command: model/fraud-detection.py
