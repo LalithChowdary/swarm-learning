@@ -271,8 +271,7 @@ class SwarmCallback(SwarmCallbackBase):
                 )
 
         # --- Context ---
-        self.mlCtx = SwarmCallback._SklearnContext(self.model)
-        self.logger.debug("Initialized Scikit-Learn context for Swarm")
+        self.__setMLContext(model=self.model)
 
         # hfMode is not applicable for Scikit-Learn
         self.hfMode = None
@@ -527,3 +526,14 @@ class SwarmCallback(SwarmCallbackBase):
             )
 
         return float(valLoss), float(totalMetrics)
+
+
+    def __setMLContext(self, **params):
+        '''
+        Scikit-Learn specific context initializer.
+        Mirrors the __setMLContext pattern used in pyt.py, tf.py,
+        and hf_transformers.py for consistency across platforms.
+        '''
+        ctx = SwarmCallback._SklearnContext(params['model'])
+        self.logger.debug("Initialized Scikit-Learn context for Swarm")
+        self.mlCtx = ctx
