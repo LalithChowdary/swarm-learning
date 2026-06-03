@@ -537,3 +537,38 @@ class SwarmCallback(SwarmCallbackBase):
         ctx = SwarmCallback._SklearnContext(params['model'])
         self.logger.debug("Initialized Scikit-Learn context for Swarm")
         self.mlCtx = ctx
+
+
+class SwarmSklearnTrainer:
+    """
+    A helper trainer class for Scikit-Learn to encapsulate the manual
+    training loop and SwarmCallback hooks.
+    """
+    def __init__(self, swarmCallback, model):
+        self.swarmCallback = swarmCallback
+        self.model = model
+
+    def fit(self, x_train, y_train, batch_size=32, epochs=100, classes=None):
+        self.swarmCallback.on_train_begin()
+        numSamples = x_train.shape[0]
+
+        for epoch in range(epochs):
+            indices = np.random.permutation(numSamples)
+            x_shuffled = x_train[indices]
+            y_shuffled = y_train[indices]
+
+            for start in range(0, numSamples, batch_size):
+                end = min(start + batch_size, numSamples)
+                x_batch = x_shuffled[start:end]
+                y_batch = y_shuffled[start:end]
+
+                if classes is not None:
+                    self.model.partial_fit(x_batch, y_batch, classes=classes)
+                else:
+                    self.model.partial_fit(x_batch, y_batch)
+
+                self.swarmCallback.on_batch_end()
+
+            self.swarmCallback.on_epoch_end(epoch)
+
+        self.swarmCallback.on_train_end()

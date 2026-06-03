@@ -38,7 +38,7 @@ import joblib
 
 from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import roc_auc_score, log_loss
-from swarmlearning.sklearn import SwarmCallback
+from swarmlearning.sklearn import SwarmCallback, SwarmSklearnTrainer
 
 
 def getXY(dataSet):
@@ -132,49 +132,10 @@ def main():
         metricFunction='roc_auc_score',
     )
 
-    # ================== Step 3: Initial Sync ==============================
-    # on_train_begin triggers the first swarm merge so all peers start
-    # from the same weights (connected to blockchain).
-    print('Calling on_train_begin — initial sync with Swarm network ...')
-    swarmCallback.on_train_begin()
-    print('on_train_begin completed. Model is synced with the Swarm network.')
-
-    # ================== Step 4-5: Training Loop (Approach 1) ==============
-    print('Starting training ...')
-    numSamples = x_train.shape[0]
-
-    for epoch in range(maxEpoch):
-        # Shuffle training data each epoch
-        indices = np.random.permutation(numSamples)
-        x_shuffled = x_train[indices]
-        y_shuffled = y_train[indices]
-
-        # Mini-batch loop
-        for start in range(0, numSamples, batchSize):
-            end = min(start + batchSize, numSamples)
-            x_batch = x_shuffled[start:end]
-            y_batch = y_shuffled[start:end]
-
-            # Incremental training on this batch
-            model.partial_fit(x_batch, y_batch, classes=np.array([0, 1]))
-
-            # Swarm sync check (syncs when syncFrequency batches reached)
-            swarmCallback.on_batch_end()
-
-        # End of epoch — update progress on SLM UI Dashboard
-        swarmCallback.on_epoch_end(epoch)
-
-        # Periodic evaluation logging
-        if (epoch + 1) % 10 == 0 or epoch == 0:
-            y_pred_proba = model.predict_proba(x_test)
-            auc = roc_auc_score(y_test, y_pred_proba[:, 1])
-            loss = log_loss(y_test, y_pred_proba)
-            print("Epoch %3d/%d — log_loss: %.4f, AUC: %.4f" %
-                  (epoch + 1, maxEpoch, loss, auc))
-
-    # ================== Step 6: Final Merge ===============================
-    print('Calling on_train_end — final merge with Swarm network ...')
-    swarmCallback.on_train_end()
+    # ================== Step 3-6: Training Loop via Trainer ===============
+    print('Starting training with SwarmSklearnTrainer ...')
+    trainer = SwarmSklearnTrainer(swarmCallback=swarmCallback, model=model)
+    trainer.fit(x_train, y_train, batch_size=batchSize, epochs=maxEpoch, classes=np.array([0, 1]))
     print('Training done!')
 
     # ================== Evaluate ==========================================
