@@ -158,6 +158,7 @@ trainFileName = 'SB19_CCFDUBL_TRAIN.csv'
 BATCH_SIZE = 32
 DEFAULT_MAX_EPOCHS = 100
 DEFAULT_MIN_PEERS = 2
+DEFAULT_SYNC_FREQUENCY = 128
 CLASSES = np.array([0, 1])
 
 
@@ -167,6 +168,7 @@ def main():
     scratchDir = os.getenv('SCRATCH_DIR', '/platform/scratch')
     maxEpoch = int(os.getenv('MAX_EPOCHS', str(DEFAULT_MAX_EPOCHS)))
     minPeers = int(os.getenv('MIN_PEERS', str(DEFAULT_MIN_PEERS)))
+    syncFrequency = int(os.getenv('SYNC_FREQUENCY', str(DEFAULT_SYNC_FREQUENCY)))
     os.makedirs(scratchDir, exist_ok=True)
 
     original_stdout = sys.stdout
@@ -184,18 +186,32 @@ def main():
 
     trainFile = dataDir + '/' + trainFileName
     print("loading train dataset %s .." % trainFile)
-    with open(trainFile, 'r') as f:
-        # first line is the header row so remove it
-        trainData = np.array(list(csv.reader(f, delimiter=","))[1:], dtype=float)
-        print('size of training Data set : %s' % np.size(trainData, 0))
+    try:
+        with open(trainFile, 'r') as f:
+            # first line is the header row so remove it
+            trainData = np.array(list(csv.reader(f, delimiter=","))[1:], dtype=float)
+            print('size of training Data set : %s' % np.size(trainData, 0))
+    except FileNotFoundError:
+        print(f"Error: Train data file not found at {trainFile}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error parsing train data file {trainFile}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     print('-' * 64)
     testFile = dataDir + '/' + testFileName
     print("loading test dataset %s .." % testFile)
-    with open(testFile, 'r') as f:
-        # first line is the header row so remove it
-        testData = np.array(list(csv.reader(f, delimiter=","))[1:], dtype=float)
-        print('size of test Data set : %s' % np.size(testData, 0))
+    try:
+        with open(testFile, 'r') as f:
+            # first line is the header row so remove it
+            testData = np.array(list(csv.reader(f, delimiter=","))[1:], dtype=float)
+            print('size of test Data set : %s' % np.size(testData, 0))
+    except FileNotFoundError:
+        print(f"Error: Test data file not found at {testFile}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error parsing test data file {testFile}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     print('-' * 64)
 
@@ -219,7 +235,7 @@ def main():
     initSample = (x_train[:1], y_train[:1])
 
     swarmCallback = SwarmCallback(
-        syncFrequency=128,
+        syncFrequency=syncFrequency,
         minPeers=minPeers,
         adsValData=(x_test, y_test),
         mergeMethod='mean',
