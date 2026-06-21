@@ -1,5 +1,5 @@
 ############################################################################
-## (C)Copyright 2021-2025 Hewlett Packard Enterprise Development LP
+## (C)Copyright 2021-2026 Hewlett Packard Enterprise Development LP
 ## Licensed under the Apache License, Version 2.0 (the "License"); you may
 ## not use this file except in compliance with the License. You may obtain
 ## a copy of the License at
@@ -142,7 +142,7 @@ class OnlineLogisticRegression(BaseEstimator, ClassifierMixin):
 #  Data Loading                                                       #
 # ================================================================== #
 
-def getXY(dataSet):
+def get_xy(dataSet):
     """Shuffle dataset and split into features (X) and labels (y)."""
     np.random.shuffle(dataSet)
     length = np.size(dataSet, 0)
@@ -155,17 +155,20 @@ def getXY(dataSet):
 testFileName = 'SB19_CCFDUBL_TEST.csv'
 trainFileName = 'SB19_CCFDUBL_TRAIN.csv'
 
-batchSize = 32
-defaultMaxEpoch = 100
-defaultMinPeers = 2
+BATCH_SIZE = 32
+DEFAULT_MAX_EPOCHS = 100
+DEFAULT_MIN_PEERS = 2
+DEFAULT_SYNC_FREQUENCY = 128
+CLASSES = np.array([0, 1])
 
 
 def main():
     modelName = 'fraud-detection-skl-custom'
     dataDir = os.getenv('DATA_DIR', '/platform/data')
     scratchDir = os.getenv('SCRATCH_DIR', '/platform/scratch')
-    maxEpoch = int(os.getenv('MAX_EPOCHS', str(defaultMaxEpoch)))
-    minPeers = int(os.getenv('MIN_PEERS', str(defaultMinPeers)))
+    maxEpoch = int(os.getenv('MAX_EPOCHS', str(DEFAULT_MAX_EPOCHS)))
+    minPeers = int(os.getenv('MIN_PEERS', str(DEFAULT_MIN_PEERS)))
+    syncFrequency = int(os.getenv('SYNC_FREQUENCY', str(DEFAULT_SYNC_FREQUENCY)))
     os.makedirs(scratchDir, exist_ok=True)
 
     original_stdout = sys.stdout
@@ -183,24 +186,39 @@ def main():
 
     trainFile = dataDir + '/' + trainFileName
     print("loading train dataset %s .." % trainFile)
-    with open(trainFile, 'r') as f:
-        # first line is the header row so remove it
-        trainData = np.array(list(csv.reader(f, delimiter=","))[1:], dtype=float)
-        print('size of training Data set : %s' % np.size(trainData, 0))
+    try:
+        with open(trainFile, 'r') as f:
+            # first line is the header row so remove it
+            trainData = np.array(list(csv.reader(f, delimiter=","))[1:], dtype=float)
+            print('size of training Data set : %s' % np.size(trainData, 0))
+    except FileNotFoundError:
+        print(f"Error: Train data file not found at {trainFile}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error parsing train data file {trainFile}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     print('-' * 64)
     testFile = dataDir + '/' + testFileName
     print("loading test dataset %s .." % testFile)
-    with open(testFile, 'r') as f:
-        # first line is the header row so remove it
-        testData = np.array(list(csv.reader(f, delimiter=","))[1:], dtype=float)
-        print('size of test Data set : %s' % np.size(testData, 0))
+    try:
+        with open(testFile, 'r') as f:
+            # first line is the header row so remove it
+            testData = np.array(list(csv.reader(f, delimiter=","))[1:], dtype=float)
+            print('size of test Data set : %s' % np.size(testData, 0))
+    except FileNotFoundError:
+        print(f"Error: Test data file not found at {testFile}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error parsing test data file {testFile}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     print('-' * 64)
 
     # ================== Prepare data ======================================
-    x_train, y_train = getXY(trainData)
-    x_test, y_test = getXY(testData)
+    x_train, y_train = get_xy(trainData)
+    x_test = testData[:, :-1]
+    y_test = testData[:, -1].astype(int)
 
     # ================== Model to train and evaluate =======================
     # Use our custom OnlineLogisticRegression instead of SGDClassifier.
@@ -218,14 +236,14 @@ def main():
     initSample = (x_train[:1], y_train[:1])
 
     swarmCallback = SwarmCallback(
-        syncFrequency=128,
+        syncFrequency=syncFrequency,
         minPeers=minPeers,
         adsValData=(x_test, y_test),
         mergeMethod='mean',
         totalEpochs=maxEpoch,
         model=model,
         initData=initSample,
-        classes=np.array([0, 1]),
+        classes=CLASSES,
         # === KEY DIFFERENCE FROM BUILT-IN EXAMPLE ===
         # Register custom weight attributes explicitly since
         # OnlineLogisticRegression is not in _SKLEARN_WEIGHT_REGISTRY.
@@ -239,12 +257,11 @@ def main():
     # ================== Training Loop via Trainer =========================
     print('Starting training with SwarmSklearnTrainer ...')
     trainer = SwarmSklearnTrainer(swarmCallback=swarmCallback, model=model)
-    trainer.fit(x_train, y_train, batch_size=batchSize, epochs=maxEpoch, classes=np.array([0, 1]))
+    trainer.fit(x_train, y_train, batch_size=BATCH_SIZE, epochs=maxEpoch, classes=CLASSES)
     print('Training done!')
 
     # ================== Evaluate ==========================================
     y_pred_proba = model.predict_proba(x_test)
-    y_pred = model.predict(x_test)
 
     finalLoss = log_loss(y_test, y_pred_proba)
     finalAuc = roc_auc_score(y_test, y_pred_proba[:, 1])
