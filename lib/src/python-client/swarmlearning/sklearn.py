@@ -1,5 +1,5 @@
 #######################################################################
-## (C)Copyright 2021-25 Hewlett Packard Enterprise Development LP
+## (C)Copyright 2021-2026 Hewlett Packard Enterprise Development LP
 ## Licensed under the Apache License, Version 2.0 (the "License"); you may
 ## not use this file except in compliance with the License. You may obtain
 ## a copy of the License at
@@ -20,7 +20,7 @@
 # their model code by creating an instance of the SwarmCallback
 # class and calling its methods at different phases of training.
 #
-# Unlike deep learning frameworks, Scikit-Learn has no native
+# Unlike other deep learning frameworks, Scikit-Learn has no native
 # callback mechanism. Users must write a manual training loop
 # using partial_fit() and invoke callback methods explicitly:
 #
